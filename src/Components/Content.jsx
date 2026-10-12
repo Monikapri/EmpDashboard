@@ -1,52 +1,73 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { MdDeleteOutline } from "react-icons/md";
-import { FiEdit } from "react-icons/fi";
+import React, {
+    useState,
+    useEffect,
+    useMemo,
+    useCallback,
+    useRef
+} from "react";
+
 import EmployeeItem from "./EmployeeItem";
 
 function Content({ title }) {
+    // Counter state
     const [count, setCount] = useState(0);
-    const [message, setMessage] = useState("Loading...");
+
+    // Employee state
     const [employeeslist, setEmployeesList] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState("");
-    const [errors, setErrors] = useState({});
     const [selectedEmployee, setSelectedEmployee] = useState(null);
 
+    // Loading and message state
+    const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState("Loading...");
+
+    // Search and sorting state
+    const [search, setSearch] = useState("");
+    const [sortOrder, setSortOrder] = useState(true);
+
+    // Form state
     const [userInfo, setUserInfo] = useState({
         name: "",
         email: "",
         phone: ""
     });
 
-    // Counter
+    const [errors, setErrors] = useState({});
+    const [editingEmployeeId, setEditingEmployeeId] = useState(null);
+
+    // Ref for focusing the search input
+    const searchRef = useRef(null);
+
+    // Counter functions
     const increment = () => {
-        setCount(count + 1);
+        setCount(prevCount => prevCount + 1);
     };
 
     const decrement = () => {
-        if (count > 0) {
-            setCount(count - 1);
-        }
+        setCount(prevCount => Math.max(0, prevCount - 1));
     };
 
     const reset = () => {
         setCount(0);
     };
 
-    // Fetch employees
+    // Fetch employees from API
     useEffect(() => {
-        setLoading(true);
+        const controller = new AbortController();
 
-        const empCall = async () => {
+        const fetchEmployees = async () => {
             try {
+                setLoading(true);
+                setMessage("Loading...");
+
                 const response = await fetch(
-                    "https://jsonplaceholder.typicode.com/users"
+                    "https://jsonplaceholder.typicode.com/users",
+                    { signal: controller.signal }
                 );
 
                 if (!response.ok) {
                     throw new Error(
-                        `HTTP error! status: ${response.status} `
+                        `HTTP error! Status: ${response.status}`
                     );
                 }
 
@@ -54,69 +75,47 @@ function Content({ title }) {
 
                 setEmployeesList(result);
                 setMessage("Employees loaded!");
-            } catch (err) {
-                setEmployeesList([]);
-                setMessage("Failed to load employees");
+            } catch (error) {
+                if (error.name !== "AbortError") {
+                    setEmployeesList([]);
+                    setMessage("Failed to load employees");
+                }
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
 
-        empCall();
+        fetchEmployees();
+
+        // Cleanup: cancel the request if the component unmounts
+        return () => {
+            controller.abort();
+        };
     }, []);
 
     // Select employee
-    const handleEmployee = (employee) => {
+    const handleEmployee = useCallback((employee) => {
         setSelectedEmployee(employee);
-    };
+    }, []);
 
     // Clear selected employee
     const clearEmployee = () => {
         setSelectedEmployee(null);
     };
 
-    // Search employees
-
+    // Search employees by name or email
     const filteredEmployees = useMemo(() => {
-        return employeeslist.filter((employee) =>
-            employee.name.toLowerCase().includes(search.toLowerCase()) || employee.email.toLowerCase().includes(search.toLowerCase())
-        )
+        const searchText = search.trim().toLowerCase();
+
+        return employeeslist.filter(employee =>
+            employee.name.toLowerCase().includes(searchText) ||
+            employee.email.toLowerCase().includes(searchText)
+        );
     }, [employeeslist, search]);
 
-
-    // Form submit
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        if (validate()) {
-            const maxId =
-                employeeslist.length > 0
-                    ? Math.max(...employeeslist.map((item) => item.id))
-                    : 0;
-
-            const newEmployee = {
-                id: maxId + 1,
-                name: userInfo.name,
-                email: userInfo.email,
-                phone: userInfo.phone
-            };
-
-            setEmployeesList([
-                ...employeeslist,
-                newEmployee
-            ]);
-
-            alert("Employee added successfully");
-
-            setUserInfo({
-                name: "",
-                email: "",
-                phone: ""
-            });
-        }
-    };
-
-    // Form validation
+    // Validate employee form
     const validate = () => {
         const newErrors = {};
 
@@ -129,7 +128,7 @@ function Content({ title }) {
         if (!userInfo.email.trim()) {
             newErrors.email = "Email is required";
         } else if (!emailPattern.test(userInfo.email)) {
-            newErrors.email = "Email Invalid";
+            newErrors.email = "Email is invalid";
         }
 
         const indianPhoneRegex = /^[6789]\d{9}$/;
@@ -137,7 +136,7 @@ function Content({ title }) {
         if (!userInfo.phone.trim()) {
             newErrors.phone = "Phone is required";
         } else if (!indianPhoneRegex.test(userInfo.phone)) {
-            newErrors.phone = "Phone Invalid";
+            newErrors.phone = "Phone is invalid";
         }
 
         setErrors(newErrors);
@@ -145,105 +144,179 @@ function Content({ title }) {
         return Object.keys(newErrors).length === 0;
     };
 
-    // Form input change
+    // Handle form input changes
     const handleChange = (e) => {
         const { name, value } = e.target;
 
-        setUserInfo({
-            ...userInfo,
+        setUserInfo(prev => ({
+            ...prev,
             [name]: value
+        }));
+
+        setErrors(prev => ({
+            ...prev,
+            [name]: ""
+        }));
+    };
+
+    // Reset the form and exit edit mode
+    const cancelEdit = () => {
+        setEditingEmployeeId(null);
+
+        setUserInfo({
+            name: "",
+            email: "",
+            phone: ""
         });
 
-        setErrors({
-            ...errors,
-            [name]: ""
+        setErrors({});
+    };
+
+    // Add or update employee
+    const handleSubmit = (e) => {
+        e.preventDefault();
+
+        if (!validate()) {
+            return;
+        }
+
+        const employeeData = {
+            name: userInfo.name.trim(),
+            email: userInfo.email.trim(),
+            phone: userInfo.phone.trim()
+        };
+
+        if (editingEmployeeId !== null) {
+            // Update the existing employee
+            setEmployeesList(prev =>
+                prev.map(employee =>
+                    employee.id === editingEmployeeId
+                        ? { ...employee, ...employeeData }
+                        : employee
+                )
+            );
+
+            // Update the selected card if it is being edited
+            setSelectedEmployee(prev =>
+                prev?.id === editingEmployeeId
+                    ? { ...prev, ...employeeData }
+                    : prev
+            );
+
+            setMessage("Employee updated successfully!");
+        } else {
+            // Add a new employee with a unique ID
+            setEmployeesList(prev => {
+                const maxId = prev.reduce(
+                    (max, employee) =>
+                        Math.max(max, employee.id),
+                    0
+                );
+
+                return [
+                    ...prev,
+                    {
+                        ...employeeData,
+                        id: maxId + 1
+                    }
+                ];
+            });
+
+            setMessage("Employee added successfully!");
+        }
+
+        // Reset form after successful submission
+        setUserInfo({
+            name: "",
+            email: "",
+            phone: ""
         });
+
+        setErrors({});
+        setEditingEmployeeId(null);
     };
 
     // Delete employee
-    // const deleteEmp = (id) => {
-    //     setEmployeesList(
-    //         employeeslist.filter(
-    //             (employee) => employee.id !== id
-    //         )
-    //     );
-
-    //     if (selectedEmployee?.id === id) {
-    //         setSelectedEmployee(null);
-    //     }
-    // };
-
     const deleteEmp = useCallback((id) => {
-        setEmployeesList(prevEmployees =>
-            prevEmployees.filter(employee => employee.id !== id)
+        setEmployeesList(prev =>
+            prev.filter(employee => employee.id !== id)
         );
 
-        if (selectedEmployee?.id === id) {
-            setSelectedEmployee(null);
-        }
-    }, [selectedEmployee]);
+        setSelectedEmployee(prev =>
+            prev?.id === id ? null : prev
+        );
 
+        setMessage("Employee deleted successfully!");
+    }, []);
 
+    // Edit employee using the same form
+    const handleEdit = useCallback((employee) => {
+        setEditingEmployeeId(employee.id);
 
-    const [sortOrder, setSortOrder] = useState(true);
+        setUserInfo({
+            name: employee.name || "",
+            email: employee.email || "",
+            phone: employee.phone || ""
+        });
 
+        setErrors({});
+    }, []);
+
+    // Sort employees by name
     const sortEmployees = () => {
         const sortedEmployees = [...employeeslist];
 
-        if (sortOrder) {
-            sortedEmployees.sort((a, b) =>
-                a.name.localeCompare(b.name)
-            );
-        } else {
-            sortedEmployees.sort((a, b) =>
-                b.name.localeCompare(a.name)
-            );
-        }
+        sortedEmployees.sort((a, b) => {
+            return sortOrder
+                ? a.name.localeCompare(b.name)
+                : b.name.localeCompare(a.name);
+        });
 
         setEmployeesList(sortedEmployees);
-        setSortOrder(!sortOrder);
+        setSortOrder(prev => !prev);
     };
 
     return (
         <div className="contentdiv flex-1 min-w-0 p-4">
 
-            {/* Page Title */}
+            {/* Page title */}
             <h1 className="font-bold text-2xl text-gray-800 text-center mb-4">
                 {title}
             </h1>
 
-            {/* Counter + Employee Form */}
+            {/* Counter and employee form */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-                {/* Counter Card */}
+                {/* Counter card */}
                 <div className="countercontent shadow rounded-lg w-full p-5">
-                    <div className="countertitle font-bold text-sm text-gray-800 text-center">
-                        <h1 className="text-center mb-4">
-                            Counter Application
-                        </h1>
-                    </div>
+                    <h2 className="font-bold text-lg text-gray-800 text-center mb-4">
+                        Counter Application
+                    </h2>
 
                     <div className="text-center text-3xl font-bold">
                         {count}
                     </div>
 
-                    <div className="btngrp p-2 space-x-3 text-center mt-4">
+                    <div className="flex justify-center gap-3 mt-4">
                         <button
-                            className="p-3 rounded bg-green-700 text-white hover:bg-green-800 transition"
+                            type="button"
+                            className="p-3 rounded bg-green-700 text-white hover:bg-green-800"
                             onClick={increment}
                         >
                             +
                         </button>
 
                         <button
-                            className="p-3 rounded bg-blue-300 text-white hover:bg-blue-400 transition"
+                            type="button"
+                            className="p-3 rounded bg-blue-600 text-white hover:bg-blue-700"
                             onClick={reset}
                         >
                             Reset
                         </button>
 
                         <button
-                            className="p-3 rounded bg-red-700 text-white hover:bg-red-800 transition"
+                            type="button"
+                            className="p-3 rounded bg-red-700 text-white hover:bg-red-800"
                             onClick={decrement}
                         >
                             -
@@ -251,13 +324,13 @@ function Content({ title }) {
                     </div>
                 </div>
 
-                {/* Employee Form */}
+                {/* Employee form */}
                 <div className="empform shadow rounded-lg w-full p-5">
-                    <div className="countertitle font-bold text-sm text-gray-800 text-center mb-4">
-                        <h1 className="text-center">
-                            Employee Form
-                        </h1>
-                    </div>
+                    <h2 className="font-bold text-lg text-gray-800 text-center mb-4">
+                        {editingEmployeeId !== null
+                            ? "Edit Employee"
+                            : "Employee Form"}
+                    </h2>
 
                     <form
                         onSubmit={handleSubmit}
@@ -265,11 +338,15 @@ function Content({ title }) {
                     >
                         {/* Name */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label
+                                htmlFor="employee-name"
+                                className="block text-sm font-medium text-gray-700 mb-2"
+                            >
                                 Name
                             </label>
 
                             <input
+                                id="employee-name"
                                 type="text"
                                 name="name"
                                 value={userInfo.name}
@@ -277,18 +354,24 @@ function Content({ title }) {
                                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
 
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.name}
-                            </p>
+                            {errors.name && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.name}
+                                </p>
+                            )}
                         </div>
 
                         {/* Email */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label
+                                htmlFor="employee-email"
+                                className="block text-sm font-medium text-gray-700 mb-2"
+                            >
                                 Email
                             </label>
 
                             <input
+                                id="employee-email"
                                 type="email"
                                 name="email"
                                 value={userInfo.email}
@@ -296,18 +379,24 @@ function Content({ title }) {
                                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
 
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.email}
-                            </p>
+                            {errors.email && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.email}
+                                </p>
+                            )}
                         </div>
 
                         {/* Phone */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label
+                                htmlFor="employee-phone"
+                                className="block text-sm font-medium text-gray-700 mb-2"
+                            >
                                 Phone
                             </label>
 
                             <input
+                                id="employee-phone"
                                 type="tel"
                                 name="phone"
                                 value={userInfo.phone}
@@ -315,194 +404,163 @@ function Content({ title }) {
                                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
                             />
 
-                            <p className="text-red-500 text-sm mt-1">
-                                {errors.phone}
-                            </p>
+                            {errors.phone && (
+                                <p className="text-red-500 text-sm mt-1">
+                                    {errors.phone}
+                                </p>
+                            )}
                         </div>
 
-                        {/* Submit */}
+                        {/* Submit and cancel */}
                         <button
                             type="submit"
                             className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold hover:bg-blue-700 transition"
                         >
-                            Add Employee
+                            {editingEmployeeId !== null
+                                ? "Update Employee"
+                                : "Add Employee"}
                         </button>
+
+                        {editingEmployeeId !== null && (
+                            <button
+                                type="button"
+                                onClick={cancelEdit}
+                                className="w-full border border-gray-300 py-2.5 rounded-lg hover:bg-gray-100"
+                            >
+                                Cancel Edit
+                            </button>
+                        )}
                     </form>
                 </div>
             </div>
 
-            {/* Selected Employee */}
+            {/* Selected employee details */}
             {selectedEmployee && (
                 <div className="empcard shadow rounded-lg w-full max-w-4xl mx-auto p-5 mt-6">
-                    <h1 className="p-2 text-center font-bold">
-                        Selected User:{" "}
-                        {selectedEmployee?.name || "None"}
-                    </h1>
+                    <h2 className="p-2 text-center font-bold text-lg">
+                        Selected Employee: {selectedEmployee.name}
+                    </h2>
 
                     <p>
-                        <span className="font-light text-gray-600">
-                            Name
-                        </span>
-                        : {selectedEmployee?.name || "None"}
+                        <span className="font-medium text-gray-600">
+                            Name:
+                        </span>{" "}
+                        {selectedEmployee.name || "None"}
                     </p>
 
                     <p>
-                        <span className="font-light text-gray-600">
-                            Email
-                        </span>
-                        : {selectedEmployee?.email || "None"}
+                        <span className="font-medium text-gray-600">
+                            Email:
+                        </span>{" "}
+                        {selectedEmployee.email || "None"}
                     </p>
 
                     <p>
-                        <span className="font-light text-gray-600">
-                            Phone
-                        </span>
-                        : {selectedEmployee?.phone || "None"}
+                        <span className="font-medium text-gray-600">
+                            Phone:
+                        </span>{" "}
+                        {selectedEmployee.phone || "None"}
                     </p>
 
                     <p>
-                        <span className="font-light text-gray-600">
-                            Website
-                        </span>
-                        : {selectedEmployee?.website || "None"}
+                        <span className="font-medium text-gray-600">
+                            Website:
+                        </span>{" "}
+                        {selectedEmployee.website || "None"}
                     </p>
 
                     <p>
-                        <span className="font-light text-gray-600">
-                            Company Name
-                        </span>
-                        : {selectedEmployee?.company?.name || "None"}
+                        <span className="font-medium text-gray-600">
+                            Company:
+                        </span>{" "}
+                        {selectedEmployee.company?.name || "None"}
                     </p>
 
                     <div className="text-center mt-4">
                         <button
-                            className="p-2 border rounded text-white bg-gray-600 hover:bg-green-700"
-                            onClick={clearEmployee}
-                        >
-                            Clear
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Employee List */}
-            <div className="countercontent shadow rounded-lg w-full max-w-4xl mx-auto p-5 mt-6">
-
-                <div className="countertitle font-bold text-sm text-gray-800 text-center">
-
-                    <h1 className="text-center p-2">
-                        Employee List
-                    </h1>
-
-                    {/* Search */}
-                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 p-2">
-                        <span>
-                            Search Employee:
-                        </span>
-
-                        <input
-                            type="text"
-                            placeholder="Search employee name or email..."
-                            value={search}
-                            onChange={(e) =>
-                                setSearch(e.target.value)
-                            }
-                            className="border rounded px-3 py-2 w-full sm:w-60"
-                        />
-
-                        <button className="p-2 border rounded text-white bg-gray-600 hover:bg-green-700" onClick={sortEmployees}>
-                            {sortOrder ? "Sort A-Z" : "Sort Z-A"}
-                        </button>
-                    </div>
-
-                    <h1 className="p-2">
-                        Selected Filter User:{" "}
-                        {search || "None"}
-                    </h1>
-
-                    {/* Message */}
-                    <div className="text-red-500">
-                        <p>
-                            {loading
-                                ? "Loading..."
-                                : message}
-                        </p>
-                    </div>
-
-                    {/* Clear */}
-                    <div className="p-2">
-                        <button
-                            className="p-2 border rounded text-white bg-gray-600 hover:bg-green-700"
+                            type="button"
+                            className="p-2 rounded text-white bg-gray-600 hover:bg-gray-700"
                             onClick={clearEmployee}
                         >
                             Clear Selection
                         </button>
                     </div>
+                </div>
+            )}
 
-                    {/* Employees */}
-                    <div className="grid grid-cols-1 gap-3 p-5">
+            {/* Employee list */}
+            <div className="countercontent shadow rounded-lg w-full max-w-4xl mx-auto p-5 mt-6">
 
-                        {filteredEmployees.length > 0 ? (
-                            filteredEmployees.map((employee) => (
+                <h2 className="text-center font-bold text-lg p-2">
+                    Employee List
+                </h2>
 
+                {/* Search and sorting */}
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-2 p-2">
+                    <label htmlFor="employee-search">
+                        Search Employee:
+                    </label>
 
-                                <div
-                                    key={employee.id}
-                                    className="p-3 bg-gray-300 rounded hover:bg-gray-200 cursor-pointer flex justify-between items-center"
-                                    onClick={() =>
-                                        handleEmployee(employee)
-                                    }
-                                >
-                                    <EmployeeItem
-                                        key={employee.id}
-                                        employee={employee}
-                                        onDelete={deleteEmp}
-                                        onSelect={handleEmployee}
-                                    />
-                                    <div className="text-left">
-                                        <div className="empname font-medium">
-                                            {employee.name}
-                                        </div>
+                    <input
+                        id="employee-search"
+                        type="text"
+                        ref={searchRef}
+                        placeholder="Search name or email..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="border rounded px-3 py-2 w-full sm:w-60"
+                    />
 
-                                        <div className="emprole text-gray-500 text-sm">
-                                            {employee.email}
-                                        </div>
-                                    </div>
+                    <button
+                        type="button"
+                        onClick={() => searchRef.current?.focus()}
+                        className="bg-blue-600 text-white px-4 py-2 rounded"
+                    >
+                        Focus Search
+                    </button>
 
-                                    <div><button
-                                        type="button"
-                                        className="p-2 text-xl hover:text-red-600"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteEmp(
-                                                employee.id
-                                            );
-                                        }}
-                                    >
-                                        <MdDeleteOutline />
-                                    </button>
-                                        <button
-                                            type="button"
-                                            className="p-2 text-xl hover:text-red-600"
-                                            onClick={(e) => {
-                                                EditEmp(
-                                                    employee.id
-                                                );
-                                            }}
-                                        >
-                                            <FiEdit />
-                                        </button></div>
+                    <button
+                        type="button"
+                        onClick={sortEmployees}
+                        className="p-2 rounded text-white bg-gray-600 hover:bg-gray-700"
+                    >
+                        {sortOrder ? "Sort A-Z" : "Sort Z-A"}
+                    </button>
+                </div>
 
+                <p className="p-2 text-center">
+                    Selected Filter: {search || "None"}
+                </p>
 
+                {/* API and operation status */}
+                <div
+                    role="status"
+                    className="text-center text-sm text-gray-600 p-2"
+                >
+                    {loading
+                        ? "Loading employees..."
+                        : message}
+                </div>
 
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-red-500">
-                                No employees found
-                            </p>
-                        )}
-                    </div>
+                {/* Employee cards */}
+                <div className="grid grid-cols-1 gap-3 p-3">
+                    {loading ? (
+                        <p className="text-center">Please wait...</p>
+                    ) : filteredEmployees.length > 0 ? (
+                        filteredEmployees.map(employee => (
+                            <EmployeeItem
+                                key={employee.id}
+                                employee={employee}
+                                onSelect={handleEmployee}
+                                onDelete={deleteEmp}
+                                onEdit={handleEdit}
+                            />
+                        ))
+                    ) : (
+                        <p className="text-red-500 text-center">
+                            No employees found
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
