@@ -5,36 +5,30 @@ import { FiEdit } from "react-icons/fi";
 
 const EmployeeItem = React.memo(function EmployeeItem({
     employee,
-    onDelete,
     onSelect,
+    onDelete,
     onEdit
 }) {
     console.log("EmployeeItem rendered:", employee.name);
 
     return (
-        <div className="p-3 bg-gray-300 rounded hover:bg-gray-200 flex justify-between items-center gap-4">
-
-            {/* Employee details */}
+        <div className="p-3 bg-gray-300 rounded flex justify-between items-center gap-3">
             <button
                 type="button"
-                onClick={() => onSelect(employee)}
                 className="flex-1 min-w-0 text-left"
+                onClick={() => onSelect(employee)}
             >
-                <p className="font-medium text-gray-800">
-                    {employee.name}
-                </p>
-
-                <p className="text-gray-500 text-sm break-words">
+                <p className="font-medium">{employee.name}</p>
+                <p className="text-gray-600 text-sm break-words">
                     {employee.email}
                 </p>
             </button>
 
-            {/* Action buttons */}
-            <div className="flex items-center shrink-0">
+            <div className="flex items-center">
                 <button
                     type="button"
-                    aria-label={`Edit ${employee.name}`}
                     title="Edit employee"
+                    aria-label={`Edit ${employee.name}`}
                     className="p-2 text-xl hover:text-blue-600"
                     onClick={() => onEdit(employee)}
                 >
@@ -43,8 +37,8 @@ const EmployeeItem = React.memo(function EmployeeItem({
 
                 <button
                     type="button"
-                    aria-label={`Delete ${employee.name}`}
                     title="Delete employee"
+                    aria-label={`Delete ${employee.name}`}
                     className="p-2 text-xl hover:text-red-600"
                     onClick={() => onDelete(employee.id)}
                 >
