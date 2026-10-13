@@ -26,8 +26,8 @@ function EmployeesPage(props) {
     return (
         <div
             className={`min-h-screen rounded p-4 ${theme === "light"
-                    ? "bg-gray-50 text-gray-900"
-                    : "bg-gray-900 text-gray-100"
+                ? "bg-gray-50 text-gray-900"
+                : "bg-gray-900 text-gray-100"
                 }`}
         >
             <h2 className="mb-4 text-xl font-bold">

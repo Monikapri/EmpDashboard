@@ -23,8 +23,8 @@ function EmployeeList({
     return (
         <div
             className={`mx-auto mt-6 w-full max-w-4xl rounded-lg p-5 shadow ${isLight
-                    ? "bg-white text-gray-900"
-                    : "bg-gray-800 text-gray-100"
+                ? "bg-white text-gray-900"
+                : "bg-gray-800 text-gray-100"
                 }`}
         >
             <h2 className="p-2 text-center text-lg font-bold">
@@ -39,14 +39,14 @@ function EmployeeList({
                     onChange={e => onSearchChange(e.target.value)}
                     placeholder="Search name or email..."
                     className={`w-full rounded border px-3 py-2 sm:w-60 ${isLight
-                            ? "border-gray-300 bg-white text-gray-900 placeholder-gray-500"
-                            : "border-gray-600 bg-gray-700 text-white placeholder-gray-300"
+                        ? "border-gray-300 bg-white text-gray-900 placeholder-gray-500"
+                        : "border-gray-600 bg-gray-700 text-white placeholder-gray-300"
                         }`}
                 />
 
                 <button
                     type="button"
-                    onClick={onFocusSearch}
+                    onClick={() => searchRef?.current?.focus()}
                     className="rounded bg-blue-600 px-4 py-2 text-white"
                 >
                     Focus Search

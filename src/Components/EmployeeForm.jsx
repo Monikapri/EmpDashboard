@@ -10,7 +10,7 @@ function EmployeeForm({
     onCancel
 }) {
     return (
-        <div className="shadow rounded-lg w-full p-5">
+        <div className="w-full min-w-0 rounded-lg p-4 sm:p-6 shadow">
             <h2 className="font-bold text-lg text-center mb-4">
                 {editingEmployeeId !== null
                     ? "Edit Employee"
@@ -37,7 +37,7 @@ function EmployeeForm({
                             name={field.name}
                             value={userInfo[field.name]}
                             onChange={onChange}
-                            className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                            className="w-full min-w-0 rounded border p-2"
                         />
 
                         {errors[field.name] && (
@@ -50,7 +50,7 @@ function EmployeeForm({
 
                 <button
                     type="submit"
-                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg"
+                    className="rounded px-3 py-2 text-sm sm:text-base border"
                 >
                     {editingEmployeeId !== null
                         ? "Update Employee"
@@ -61,7 +61,7 @@ function EmployeeForm({
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="w-full border py-2.5 rounded-lg"
+                        className="rounded px-3 py-2 text-sm sm:text-base border"
                     >
                         Cancel Edit
                     </button>
