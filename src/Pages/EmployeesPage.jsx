@@ -1,26 +1,38 @@
-
+import { useContext } from "react";
+import AppContext from "../context/AppContext";
 import EmployeeList from "../Components/EmployeeList";
 import SelectedEmployee from "../Components/SelectedEmployee";
 
-function EmployeesPage({
-    employees,
-    search,
-    onSearchChange,
-    onFocusSearch,
-    sortOrder,
-    onSort,
-    onSelect,
-    onDelete,
-    onEdit,
-    loading,
-    message,
-    selectedEmployee,
-    onClear,
-    searchRef
-}) {
+function EmployeesPage(props) {
+    const { theme } = useContext(AppContext);
+
+    const {
+        employees,
+        search,
+        onSearchChange,
+        onFocusSearch,
+        sortOrder,
+        onSort,
+        onSelect,
+        onDelete,
+        onEdit,
+        loading,
+        message,
+        selectedEmployee,
+        onClear,
+        searchRef
+    } = props;
+
     return (
-        <div className="p-4">
-            <h2 className="text-xl font-bold mb-4">Employees</h2>
+        <div
+            className={`min-h-screen rounded p-4 ${theme === "light"
+                    ? "bg-gray-50 text-gray-900"
+                    : "bg-gray-900 text-gray-100"
+                }`}
+        >
+            <h2 className="mb-4 text-xl font-bold">
+                Employees
+            </h2>
 
             <EmployeeList
                 employees={employees}

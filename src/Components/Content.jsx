@@ -19,10 +19,14 @@ import Dashboard from "../Pages/Dashboard";
 import CounterPage from "../Pages/CounterPage";
 import EmployeesPage from "../Pages/EmployeesPage";
 import EmployeeFormPage from "../Pages/EmployeeFormPage";
+import Sidebar from "./Sidebar";
+import AppContext from "../context/AppContext";
+import { useContext } from "react";
 
 function Content() {
     const navigate = useNavigate();
     const searchRef = useRef(null);
+    const { theme } = useContext(AppContext);
 
     // 1. State management
     const [employeesList, setEmployeesList] = useState([]);
@@ -252,125 +256,89 @@ function Content() {
     }, [filteredEmployees, sortOrder]);
 
     // 13. Render pages using React Router
+
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div
+            className={`min-h-screen flex transition-colors duration-300 ${theme === "light"
+                ? "bg-gray-50 text-gray-900"
+                : "bg-gray-900 text-gray-100"
+                }`}
+        >
+            {/* Sidebar with theme toggle */}
+            <Sidebar />
 
-            {/* Navigation */}
-            <header className="bg-blue-700 text-white p-4">
-                <h1 className="text-2xl font-bold mb-4">
-                    Employee Dashboard
-                </h1>
+            {/* Main dashboard area */}
+            <div className="flex-1 min-w-0">
 
-                <nav className="flex flex-wrap gap-5">
-                    <NavLink
-                        to="/"
-                        end
-                        className={({ isActive }) =>
-                            isActive
-                                ? "font-bold underline"
-                                : "hover:underline"
-                        }
-                    >
-                        Dashboard
-                    </NavLink>
+                <header
+                    className={`p-4 transition-colors duration-300 ${theme === "light"
+                        ? "bg-blue-700 text-white"
+                        : "bg-gray-800 text-white"
+                        }`}
+                >
+                    <h1 className="text-2xl font-bold">
+                        Employee Dashboard
+                    </h1>
+                </header>
 
-                    <NavLink
-                        to="/counter"
-                        className={({ isActive }) =>
-                            isActive
-                                ? "font-bold underline"
-                                : "hover:underline"
-                        }
-                    >
-                        Counter
-                    </NavLink>
+                <main className="max-w-6xl mx-auto p-4">
 
-                    <NavLink
-                        to="/employees"
-                        className={({ isActive }) =>
-                            isActive
-                                ? "font-bold underline"
-                                : "hover:underline"
-                        }
-                    >
-                        Employees
-                    </NavLink>
+                    <Routes>
+                        <Route
+                            path="/"
+                            element={
+                                <Dashboard
+                                    selectedEmployee={selectedEmployee}
+                                    onClear={clearEmployee}
+                                />
+                            }
+                        />
 
-                    <NavLink
-                        to="/employee-form"
-                        className={({ isActive }) =>
-                            isActive
-                                ? "font-bold underline"
-                                : "hover:underline"
-                        }
-                    >
-                        Add Employee
-                    </NavLink>
-                </nav>
-            </header>
+                        <Route
+                            path="/counter"
+                            element={<CounterPage />}
+                        />
 
-            {/* Page content */}
-            <main className="max-w-6xl mx-auto p-4">
+                        <Route
+                            path="/employees"
+                            element={
+                                <EmployeesPage
+                                    employees={sortedEmployees}
+                                    search={search}
+                                    setSearch={setSearch}
+                                    searchRef={searchRef}
+                                    sortOrder={sortOrder}
+                                    sortEmployees={sortEmployees}
+                                    onSelect={handleEmployee}
+                                    onDelete={deleteEmp}
+                                    onEdit={handleEdit}
+                                    loading={loading}
+                                    message={message}
+                                    selectedEmployee={selectedEmployee}
+                                    onClear={clearEmployee}
+                                />
+                            }
+                        />
 
-                <Routes>
-                    <Route
-                        path="/"
-                        element={
-                            <Dashboard
-                                selectedEmployee={selectedEmployee}
-                                onClear={clearEmployee}
-                            />
-                        }
-                    />
+                        <Route
+                            path="/employee-form"
+                            element={
+                                <EmployeeFormPage
+                                    userInfo={userInfo}
+                                    errors={errors}
+                                    editingEmployeeId={editingEmployeeId}
+                                    onChange={handleChange}
+                                    onSubmit={handleSubmit}
+                                    onCancel={cancelEdit}
+                                />
+                            }
+                        />
 
-                    <Route
-                        path="/counter"
-                        element={<CounterPage />}
-                    />
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </main>
 
-                    <Route
-                        path="/employees"
-                        element={
-                            <EmployeesPage
-                                employees={sortedEmployees}
-                                search={search}
-                                onSearchChange={setSearch}
-                                searchRef={searchRef}
-                                onFocusSearch={() => searchRef.current?.focus()}
-                                sortOrder={sortOrder}
-                                onSort={sortEmployees}
-                                onSelect={handleEmployee}
-                                onDelete={deleteEmp}
-                                onEdit={handleEdit}
-                                loading={loading}
-                                message={message}
-                                selectedEmployee={selectedEmployee}
-                                onClear={clearEmployee}
-                            />
-                        }
-                    />
-
-                    <Route
-                        path="/employee-form"
-                        element={
-                            <EmployeeFormPage
-                                userInfo={userInfo}
-                                errors={errors}
-                                editingEmployeeId={editingEmployeeId}
-                                onChange={handleChange}
-                                onSubmit={handleSubmit}
-                                onCancel={cancelEdit}
-                            />
-                        }
-                    />
-
-                    <Route
-                        path="*"
-                        element={<Navigate to="/" replace />}
-                    />
-                </Routes>
-
-            </main>
+            </div>
         </div>
     );
 }

@@ -1,5 +1,6 @@
 
-import React from "react";
+import { useContext } from "react";
+import AppContext from "../context/AppContext";
 import EmployeeItem from "./EmployeeItem";
 
 function EmployeeList({
@@ -16,27 +17,37 @@ function EmployeeList({
     message,
     searchRef
 }) {
+    const { theme } = useContext(AppContext);
+    const isLight = theme === "light";
+
     return (
-        <div className="shadow rounded-lg w-full max-w-4xl mx-auto p-5 mt-6">
-            <h2 className="text-center font-bold text-lg p-2">
+        <div
+            className={`mx-auto mt-6 w-full max-w-4xl rounded-lg p-5 shadow ${isLight
+                    ? "bg-white text-gray-900"
+                    : "bg-gray-800 text-gray-100"
+                }`}
+        >
+            <h2 className="p-2 text-center text-lg font-bold">
                 Employee List
             </h2>
 
-            <div className="flex flex-col sm:flex-row gap-2 items-center p-2">
+            <div className="flex flex-col items-center gap-2 p-2 sm:flex-row">
                 <input
                     type="text"
                     value={search}
                     ref={searchRef}
                     onChange={e => onSearchChange(e.target.value)}
                     placeholder="Search name or email..."
-                    className="border rounded px-3 py-2 w-full sm:w-60"
+                    className={`w-full rounded border px-3 py-2 sm:w-60 ${isLight
+                            ? "border-gray-300 bg-white text-gray-900 placeholder-gray-500"
+                            : "border-gray-600 bg-gray-700 text-white placeholder-gray-300"
+                        }`}
                 />
-
 
                 <button
                     type="button"
                     onClick={onFocusSearch}
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                    className="rounded bg-blue-600 px-4 py-2 text-white"
                 >
                     Focus Search
                 </button>
@@ -44,13 +55,16 @@ function EmployeeList({
                 <button
                     type="button"
                     onClick={onSort}
-                    className="bg-gray-600 text-white px-4 py-2 rounded"
+                    className="rounded bg-gray-600 px-4 py-2 text-white"
                 >
-                    {sortOrder ? "Sort A-Z" : "Sort Z-A"}
+                    {sortOrder === "asc" ? "Sort Z-A" : "Sort A-Z"}
                 </button>
             </div>
 
-            <p className="text-center text-sm text-gray-600 p-2">
+            <p
+                className={`p-2 text-center text-sm ${isLight ? "text-gray-600" : "text-gray-300"
+                    }`}
+            >
                 {loading ? "Loading employees..." : message}
             </p>
 
@@ -68,7 +82,7 @@ function EmployeeList({
                         />
                     ))
                 ) : (
-                    <p className="text-red-500 text-center">
+                    <p className="text-center text-red-500">
                         No employees found
                     </p>
                 )}

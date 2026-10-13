@@ -2,6 +2,8 @@
 import React from "react";
 import { MdDeleteOutline } from "react-icons/md";
 import { FiEdit } from "react-icons/fi";
+import { useContext } from "react";
+import AppContext from "../context/AppContext";
 
 const EmployeeItem = React.memo(function EmployeeItem({
     employee,
@@ -10,9 +12,14 @@ const EmployeeItem = React.memo(function EmployeeItem({
     onEdit
 }) {
     console.log("EmployeeItem rendered:", employee.name);
+    const { theme } = useContext(AppContext);
+    const cardClass = theme === "light"
+        ? "bg-white text-gray-900 border-gray-200"
+        : "bg-gray-700 text-gray-100 border-gray-600";
+
 
     return (
-        <div className="p-3 bg-gray-300 rounded flex justify-between items-center gap-3">
+        <div className={`${cardClass} p-3 bg-gray-300 rounded flex justify-between items-center gap-3`}>
             <button
                 type="button"
                 className="flex-1 min-w-0 text-left"

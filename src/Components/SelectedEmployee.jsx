@@ -1,12 +1,20 @@
 
-import React from "react";
+import { useContext } from "react";
+import AppContext from "../context/AppContext";
 
 function SelectedEmployee({ employee, onClear }) {
+    const { theme } = useContext(AppContext);
+
     if (!employee) return null;
 
     return (
-        <div className="shadow rounded-lg w-full max-w-4xl mx-auto p-5 mt-6">
-            <h2 className="text-center font-bold text-lg mb-4">
+        <div
+            className={`mx-auto mt-6 w-full max-w-4xl rounded-lg p-5 shadow ${theme === "light"
+                    ? "bg-white text-gray-900"
+                    : "bg-gray-800 text-gray-100"
+                }`}
+        >
+            <h2 className="mb-4 text-center text-lg font-bold">
                 Selected Employee: {employee.name}
             </h2>
 
@@ -19,7 +27,7 @@ function SelectedEmployee({ employee, onClear }) {
             <button
                 type="button"
                 onClick={onClear}
-                className="mt-4 p-2 rounded text-white bg-gray-600"
+                className="mt-4 rounded bg-gray-600 p-2 text-white hover:bg-gray-700"
             >
                 Clear Selection
             </button>
